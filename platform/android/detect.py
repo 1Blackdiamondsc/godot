@@ -84,8 +84,11 @@ def install_ndk_if_needed(env):
         ndk_download_args = "ndk;" + get_project_ndk_version()
         subprocess.check_call([sdkmanager_path, ndk_download_args])
 
-        env["ANDROID_NDK_ROOT"] = env["ANDROID_SDK_ROOT"] + "/ndk/" + get_project_ndk_version()
-        print("ANDROID_NDK_ROOT: " + env["ANDROID_NDK_ROOT"])
+        env["ANDROID_NDK_ROOT"] = (
+            f'{env["ANDROID_SDK_ROOT"]}/ndk/' + get_project_ndk_version()
+        )
+
+        print(f'ANDROID_NDK_ROOT: {env["ANDROID_NDK_ROOT"]}')
 
 
 def configure(env):
@@ -121,11 +124,11 @@ def configure(env):
         def mySpawn(sh, escape, cmd, args, env):
 
             newargs = " ".join(args[1:])
-            cmdline = cmd + " " + newargs
+            cmdline = f'{cmd} {newargs}'
 
             rv = 0
             if len(cmdline) > 32000 and cmd.endswith("ar"):
-                cmdline = cmd + " " + args[1] + " " + args[2] + " "
+                cmdline = f'{cmd} {args[1]} {args[2]} '
                 for i in range(3, len(args)):
                     rv = mySubProcess(cmdline + args[i], env)
                     if rv:

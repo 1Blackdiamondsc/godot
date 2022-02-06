@@ -65,10 +65,11 @@ env_thirdparty.Prepend(
         thirdparty_dir + "src/loaders/svg",
         thirdparty_dir + "src/loaders/jpg",
         thirdparty_dir + "src/loaders/png",
-        thirdparty_dir + "src/loaders/tvg",
+        f'{thirdparty_dir}src/loaders/tvg',
         thirdparty_dir + "src/savers/tvg",
     ]
 )
+
 env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
 env.modules_sources += thirdparty_obj
 

@@ -15,44 +15,35 @@ def can_build():
     if os.name != "posix" or sys.platform == "darwin":
         return False
 
-    # Check the minimal dependencies
-    x11_error = os.system("pkg-config --version > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config --version > /dev/null"):
         print("Error: pkg-config not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config x11 --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config x11 --modversion > /dev/null"):
         print("Error: X11 libraries not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xcursor --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xcursor --modversion > /dev/null"):
         print("Error: Xcursor library not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xinerama --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xinerama --modversion > /dev/null"):
         print("Error: Xinerama library not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xext --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xext --modversion > /dev/null"):
         print("Error: Xext library not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xrandr --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xrandr --modversion > /dev/null"):
         print("Error: XrandR library not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xrender --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xrender --modversion > /dev/null"):
         print("Error: XRender library not found. Aborting.")
         return False
 
-    x11_error = os.system("pkg-config xi --modversion > /dev/null")
-    if x11_error:
+    if x11_error := os.system("pkg-config xi --modversion > /dev/null"):
         print("Error: Xi library not found. Aborting.")
         return False
 
@@ -144,7 +135,7 @@ def configure(env):
         if "clang++" not in os.path.basename(env["CXX"]):
             env["CC"] = "clang"
             env["CXX"] = "clang++"
-        env.extra_suffix = ".llvm" + env.extra_suffix
+        env.extra_suffix = f'.llvm{env.extra_suffix}'
 
     if env["use_lld"]:
         if env["use_llvm"]:
@@ -163,51 +154,50 @@ def configure(env):
     if env["use_ubsan"] or env["use_asan"] or env["use_lsan"] or env["use_tsan"] or env["use_msan"]:
         env.extra_suffix += ".san"
 
-        if env["use_ubsan"]:
+    if env["use_ubsan"]:
+        env.Append(
+            CCFLAGS=[
+                "-fsanitize=undefined,shift,shift-exponent,integer-divide-by-zero,unreachable,vla-bound,null,return,signed-integer-overflow,bounds,float-divide-by-zero,float-cast-overflow,nonnull-attribute,returns-nonnull-attribute,bool,enum,vptr,pointer-overflow,builtin"
+            ]
+        )
+        env.Append(LINKFLAGS=["-fsanitize=undefined"])
+        if env["use_llvm"]:
             env.Append(
                 CCFLAGS=[
-                    "-fsanitize=undefined,shift,shift-exponent,integer-divide-by-zero,unreachable,vla-bound,null,return,signed-integer-overflow,bounds,float-divide-by-zero,float-cast-overflow,nonnull-attribute,returns-nonnull-attribute,bool,enum,vptr,pointer-overflow,builtin"
+                    "-fsanitize=nullability-return,nullability-arg,function,nullability-assign,implicit-integer-sign-change"
                 ]
             )
-            env.Append(LINKFLAGS=["-fsanitize=undefined"])
-            if env["use_llvm"]:
-                env.Append(
-                    CCFLAGS=[
-                        "-fsanitize=nullability-return,nullability-arg,function,nullability-assign,implicit-integer-sign-change"
-                    ]
-                )
-            else:
-                env.Append(CCFLAGS=["-fsanitize=bounds-strict"])
+        else:
+            env.Append(CCFLAGS=["-fsanitize=bounds-strict"])
 
-        if env["use_asan"]:
-            env.Append(CCFLAGS=["-fsanitize=address,pointer-subtract,pointer-compare"])
-            env.Append(LINKFLAGS=["-fsanitize=address"])
+    if env["use_asan"]:
+        env.Append(CCFLAGS=["-fsanitize=address,pointer-subtract,pointer-compare"])
+        env.Append(LINKFLAGS=["-fsanitize=address"])
 
-        if env["use_lsan"]:
-            env.Append(CCFLAGS=["-fsanitize=leak"])
-            env.Append(LINKFLAGS=["-fsanitize=leak"])
+    if env["use_lsan"]:
+        env.Append(CCFLAGS=["-fsanitize=leak"])
+        env.Append(LINKFLAGS=["-fsanitize=leak"])
 
-        if env["use_tsan"]:
-            env.Append(CCFLAGS=["-fsanitize=thread"])
-            env.Append(LINKFLAGS=["-fsanitize=thread"])
+    if env["use_tsan"]:
+        env.Append(CCFLAGS=["-fsanitize=thread"])
+        env.Append(LINKFLAGS=["-fsanitize=thread"])
 
-        if env["use_msan"] and env["use_llvm"]:
-            env.Append(CCFLAGS=["-fsanitize=memory"])
-            env.Append(CCFLAGS=["-fsanitize-memory-track-origins"])
-            env.Append(CCFLAGS=["-fsanitize-recover=memory"])
-            env.Append(LINKFLAGS=["-fsanitize=memory"])
+    if env["use_msan"] and env["use_llvm"]:
+        env.Append(CCFLAGS=["-fsanitize=memory"])
+        env.Append(CCFLAGS=["-fsanitize-memory-track-origins"])
+        env.Append(CCFLAGS=["-fsanitize-recover=memory"])
+        env.Append(LINKFLAGS=["-fsanitize=memory"])
 
     if env["use_lto"]:
         if not env["use_llvm"] and env.GetOption("num_jobs") > 1:
             env.Append(CCFLAGS=["-flto"])
             env.Append(LINKFLAGS=["-flto=" + str(env.GetOption("num_jobs"))])
+        elif env["use_lld"] and env["use_thinlto"]:
+            env.Append(CCFLAGS=["-flto=thin"])
+            env.Append(LINKFLAGS=["-flto=thin"])
         else:
-            if env["use_lld"] and env["use_thinlto"]:
-                env.Append(CCFLAGS=["-flto=thin"])
-                env.Append(LINKFLAGS=["-flto=thin"])
-            else:
-                env.Append(CCFLAGS=["-flto"])
-                env.Append(LINKFLAGS=["-flto"])
+            env.Append(CCFLAGS=["-flto"])
+            env.Append(LINKFLAGS=["-flto"])
 
         if not env["use_llvm"]:
             env["RANLIB"] = "gcc-ranlib"
@@ -277,10 +267,6 @@ def configure(env):
             )
             sys.exit(255)
         env.ParseConfig("pkg-config bullet --cflags --libs")
-
-    if False:  # not env['builtin_assimp']:
-        # FIXME: Add min version check
-        env.ParseConfig("pkg-config assimp --cflags --libs")
 
     if not env["builtin_enet"]:
         env.ParseConfig("pkg-config libenet --cflags --libs")
@@ -408,17 +394,18 @@ def configure(env):
         import re
 
         linker_version_str = subprocess.check_output([env.subst(env["LINK"]), "-Wl,--version"]).decode("utf-8")
-        gnu_ld_version = re.search("^GNU ld [^$]*(\d+\.\d+)$", linker_version_str, re.MULTILINE)
-        if not gnu_ld_version:
-            print(
-                "Warning: Creating template binaries enabled for PCK embedding is currently only supported with GNU ld, not gold or LLD."
-            )
-        else:
+        if gnu_ld_version := re.search(
+            "^GNU ld [^$]*(\d+\.\d+)$", linker_version_str, re.MULTILINE
+        ):
             if float(gnu_ld_version.group(1)) >= 2.30:
                 env.Append(LINKFLAGS=["-T", "platform/linuxbsd/pck_embed.ld"])
             else:
                 env.Append(LINKFLAGS=["-T", "platform/linuxbsd/pck_embed.legacy.ld"])
 
+        else:
+            print(
+                "Warning: Creating template binaries enabled for PCK embedding is currently only supported with GNU ld, not gold or LLD."
+            )
     ## Cross-compilation
 
     if is64 and env["bits"] == "32":
@@ -432,8 +419,7 @@ def configure(env):
     if env["use_static_cpp"]:
         env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
         if env["use_llvm"]:
-            env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
+            env["LINKCOM"] = f'{env["LINKCOM"]} -l:libatomic.a'
 
-    else:
-        if env["use_llvm"]:
-            env.Append(LIBS=["atomic"])
+    elif env["use_llvm"]:
+        env.Append(LIBS=["atomic"])

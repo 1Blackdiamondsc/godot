@@ -27,7 +27,7 @@ def get_android_out_dir(env):
 def find_name_in_dir_files(directory, names, prefixes=[""], extensions=[""]):
     for extension in extensions:
         if extension and not extension.startswith("."):
-            extension = "." + extension
+            extension = f'.{extension}'
         for prefix in prefixes:
             for curname in names:
                 if os.path.isfile(os.path.join(directory, prefix + curname + extension)):
@@ -38,7 +38,7 @@ def find_name_in_dir_files(directory, names, prefixes=[""], extensions=[""]):
 def find_file_in_dir(directory, names, prefixes=[""], extensions=[""]):
     for extension in extensions:
         if extension and not extension.startswith("."):
-            extension = "." + extension
+            extension = f'.{extension}'
         for prefix in prefixes:
             for curname in names:
                 filename = prefix + curname + extension
@@ -79,10 +79,14 @@ def find_wasm_src_dir(mono_root):
         os.path.join(mono_root, "src"),
         os.path.join(mono_root, "../src"),
     ]
-    for hint_dir in hint_dirs:
-        if os.path.isfile(os.path.join(hint_dir, "driver.c")):
-            return hint_dir
-    return ""
+    return next(
+        (
+            hint_dir
+            for hint_dir in hint_dirs
+            if os.path.isfile(os.path.join(hint_dir, "driver.c"))
+        ),
+        "",
+    )
 
 
 def configure(env, env_mono):
@@ -270,7 +274,10 @@ def configure(env, env_mono):
 
                         def copy_mono_lib(libname_wo_ext):
                             copy_file(
-                                mono_lib_path, "#bin", libname_wo_ext + ".a", "%s.iphone.%s.a" % (libname_wo_ext, arch)
+                                mono_lib_path,
+                                "#bin",
+                                f'{libname_wo_ext}.a',
+                                "%s.iphone.%s.a" % (libname_wo_ext, arch),
                             )
 
                         # Copy Mono libraries to the output folder. These are meant to be bundled with
@@ -478,16 +485,20 @@ def copy_mono_etc_dir(mono_root, target_mono_config_dir, platform):
 
     mono_etc_dir = os.path.join(mono_root, "etc", "mono")
     if not os.path.isdir(mono_etc_dir):
-        mono_etc_dir = ""
         etc_hint_dirs = []
         if platform != "windows":
             etc_hint_dirs += ["/etc/mono", "/usr/local/etc/mono"]
         if "MONO_CFG_DIR" in os.environ:
             etc_hint_dirs += [os.path.join(os.environ["MONO_CFG_DIR"], "mono")]
-        for etc_hint_dir in etc_hint_dirs:
-            if os.path.isdir(etc_hint_dir):
-                mono_etc_dir = etc_hint_dir
-                break
+        mono_etc_dir = next(
+            (
+                etc_hint_dir
+                for etc_hint_dir in etc_hint_dirs
+                if os.path.isdir(etc_hint_dir)
+            ),
+            "",
+        )
+
         if not mono_etc_dir:
             raise RuntimeError("Mono installation etc directory not found")
 

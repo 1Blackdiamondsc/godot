@@ -8,7 +8,7 @@ from platform_methods import subprocess_main
 
 
 def _spaced(e):
-    return e if e[-1] == "*" else e + " "
+    return e if e[-1] == "*" else f'{e} '
 
 
 def _build_gdnative_api_struct_header(api):
@@ -42,14 +42,26 @@ def _build_gdnative_api_struct_header(api):
             ret_val += generate_extension_struct(name, ext["next"])
 
         ret_val += [
-            "typedef struct godot_gdnative_ext_"
-            + name
-            + ("" if not include_version else ("_{0}_{1}".format(ext["version"]["major"], ext["version"]["minor"])))
-            + "_api_struct {",
+            (
+                (
+                    f'typedef struct godot_gdnative_ext_{name}'
+                    + (
+                        ""
+                        if not include_version
+                        else (
+                            "_{0}_{1}".format(
+                                ext["version"]["major"], ext["version"]["minor"]
+                            )
+                        )
+                    )
+                )
+                + "_api_struct {"
+            ),
             "\tunsigned int type;",
             "\tgodot_gdnative_api_version version;",
             "\tconst godot_gdnative_api_struct *next;",
         ]
+
 
         for funcdef in ext["api"]:
             args = ", ".join(["%s%s" % (_spaced(t), n) for t, n in funcdef["arguments"]])
@@ -130,19 +142,31 @@ def _build_gdnative_api_struct_source(api):
 
     def get_extension_struct_name(name, ext, include_version=True):
         return (
-            "godot_gdnative_ext_"
-            + name
-            + ("" if not include_version else ("_{0}_{1}".format(ext["version"]["major"], ext["version"]["minor"])))
-            + "_api_struct"
-        )
+            f'godot_gdnative_ext_{name}'
+            + (
+                ""
+                if not include_version
+                else (
+                    "_{0}_{1}".format(
+                        ext["version"]["major"], ext["version"]["minor"]
+                    )
+                )
+            )
+        ) + "_api_struct"
 
     def get_extension_struct_instance_name(name, ext, include_version=True):
         return (
-            "api_extension_"
-            + name
-            + ("" if not include_version else ("_{0}_{1}".format(ext["version"]["major"], ext["version"]["minor"])))
-            + "_struct"
-        )
+            f'api_extension_{name}'
+            + (
+                ""
+                if not include_version
+                else (
+                    "_{0}_{1}".format(
+                        ext["version"]["major"], ext["version"]["minor"]
+                    )
+                )
+            )
+        ) + "_struct"
 
     def get_extension_struct_definition(name, ext, include_version=True):
 
@@ -168,9 +192,7 @@ def _build_gdnative_api_struct_source(api):
             + ",",
         ]
 
-        for funcdef in ext["api"]:
-            ret_val.append("\t%s," % funcdef["name"])
-
+        ret_val.extend("\t%s," % funcdef["name"] for funcdef in ext["api"])
         ret_val += ["};\n"]
 
         return ret_val
@@ -200,9 +222,7 @@ def _build_gdnative_api_struct_source(api):
             + ",",
         ]
 
-        for funcdef in core["api"]:
-            ret_val.append("\t%s," % funcdef["name"])
-
+        ret_val.extend("\t%s," % funcdef["name"] for funcdef in core["api"])
         ret_val += ["};\n"]
 
         return ret_val

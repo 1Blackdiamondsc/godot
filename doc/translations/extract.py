@@ -156,10 +156,7 @@ def _collect_classes_file(path, classes):
 ## indication in string where the codeblock starts, ends, and it's indent
 ## if i inside the region returns the indent, else returns -1
 def _get_xml_indent(i, regions):
-    for region in regions:
-        if region[0] < i < region[1]:
-            return region[2]
-    return -1
+    return next((region[2] for region in regions if region[0] < i < region[1]), -1)
 
 
 ## find and build all regions of codeblock which we need later
@@ -201,12 +198,11 @@ def _strip_and_split_desc(desc, code_block_regions):
             c = "\\\\"  ## <element \> is invalid for msgmerge
         if c == "\t":
             xml_indent = _get_xml_indent(i, code_block_regions)
-            if xml_indent >= 0:
-                total_indent += 1
-                if xml_indent < total_indent:
-                    c = "\\t"
-                else:
-                    continue
+            if xml_indent < 0:
+                continue
+            total_indent += 1
+            if xml_indent < total_indent:
+                c = "\\t"
             else:
                 continue
         desc_strip += c

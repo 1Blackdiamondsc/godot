@@ -43,9 +43,9 @@ for name, path in env.module_list.items():
     env.modules_sources = []
 
     if not os.path.isabs(path):
-        SConscript(name + "/SCsub")  # Built-in.
+        SConscript(f'{name}/SCsub')
     else:
-        SConscript(path + "/SCsub")  # Custom.
+        SConscript(f'{path}/SCsub')
 
     lib = env_modules.add_library("module_%s" % name, env.modules_sources)
     env.Prepend(LIBS=[lib])
