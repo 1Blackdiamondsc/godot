@@ -25,7 +25,7 @@ def make_editor_icons_action(target, source, env):
         with open(fname, "rb") as svgf:
             b = svgf.read(1)
             while len(b) == 1:
-                icons_string.write("\\" + str(hex(ord(b)))[1:])
+                icons_string.write(f'\\{str(hex(ord(b)))[1:]}')
                 b = svgf.read(1)
 
         icons_string.write('"')
@@ -46,8 +46,7 @@ def make_editor_icons_action(target, source, env):
     # this is used to store the indices of thumbnail icons
     thumb_medium_indices = []
     thumb_big_indices = []
-    index = 0
-    for f in svg_icons:
+    for index, f in enumerate(svg_icons):
 
         fname = str(f)
 
@@ -64,8 +63,6 @@ def make_editor_icons_action(target, source, env):
         if fname != svg_icons[-1]:
             s.write(",")
         s.write("\n")
-
-        index += 1
 
     s.write("};\n")
 

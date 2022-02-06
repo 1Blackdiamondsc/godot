@@ -8,7 +8,7 @@ def generate_header(solution_dir, version_header_dst):
         for file in files:
             filepath = os.path.join(root, file)
             mtime = os.path.getmtime(filepath)
-            latest_mtime = mtime if mtime > latest_mtime else latest_mtime
+            latest_mtime = max(mtime, latest_mtime)
 
     glue_version = int(latest_mtime)  # The latest modified time will do for now
 

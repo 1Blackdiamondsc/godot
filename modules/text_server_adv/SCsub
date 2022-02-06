@@ -130,7 +130,7 @@ if env["builtin_harfbuzz"]:
             ]
         )
 
-    if env["platform"] == "android" or env["platform"] == "linuxbsd":
+    if env["platform"] in ["android", "linuxbsd"]:
         env_harfbuzz.Append(CCFLAGS=["-DHAVE_PTHREAD"])
 
     if env["platform"] == "javascript":
@@ -452,7 +452,11 @@ if env["builtin_icu"]:
     icu_data_name = "icudt70l.dat"
 
     if env_icu["tools"]:
-        env_icu.Depends("#thirdparty/icu4c/icudata.gen.h", "#thirdparty/icu4c/" + icu_data_name)
+        env_icu.Depends(
+            "#thirdparty/icu4c/icudata.gen.h",
+            f'#thirdparty/icu4c/{icu_data_name}',
+        )
+
         env_icu.Command("#thirdparty/icu4c/icudata.gen.h", "#thirdparty/icu4c/" + icu_data_name, make_icu_data)
     else:
         thirdparty_sources += ["icu_data/icudata_stub.cpp"]
@@ -473,11 +477,7 @@ if env["builtin_icu"]:
             "-DICU_DATA_NAME=" + icu_data_name,
         ]
     )
-    env_text_server_adv.Append(
-        CXXFLAGS=[
-            "-DICU_DATA_NAME=" + icu_data_name,
-        ]
-    )
+    env_text_server_adv.Append(CXXFLAGS=[f'-DICU_DATA_NAME={icu_data_name}'])
 
     lib = env_icu.add_library("icu_builtin", thirdparty_sources)
     thirdparty_obj += lib

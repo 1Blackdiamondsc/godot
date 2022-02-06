@@ -24,10 +24,16 @@ if not os.path.exists("editor"):
 matches = []
 for root, dirnames, filenames in os.walk("."):
     dirnames[:] = [d for d in dirnames if d not in ["thirdparty"]]
-    for filename in fnmatch.filter(filenames, "*.cpp"):
-        matches.append(os.path.join(root, filename))
-    for filename in fnmatch.filter(filenames, "*.h"):
-        matches.append(os.path.join(root, filename))
+    matches.extend(
+        os.path.join(root, filename)
+        for filename in fnmatch.filter(filenames, "*.cpp")
+    )
+
+    matches.extend(
+        os.path.join(root, filename)
+        for filename in fnmatch.filter(filenames, "*.h")
+    )
+
 matches.sort()
 
 
@@ -55,7 +61,7 @@ msgstr ""
 
 def _write_message(msgctx, msg, msg_plural, location):
     global main_po
-    main_po += "#: " + location + "\n"
+    main_po += f'#: {location}' + "\n"
     if msgctx != "":
         main_po += 'msgctxt "' + msgctx + '"\n'
     main_po += 'msgid "' + msg + '"\n'
@@ -77,7 +83,7 @@ def _add_additional_location(msgctx, msg, location):
 
     if msg_pos == -1:
         print("Someone apparently thought writing Python was as easy as GDScript. Ping Akien.")
-    main_po = main_po[:msg_pos] + " " + location + main_po[msg_pos:]
+    main_po = f'{main_po[:msg_pos]} {location}{main_po[msg_pos:]}'
 
 
 def _write_translator_comment(msgctx, msg, translator_comment):
@@ -97,7 +103,7 @@ def _write_translator_comment(msgctx, msg, translator_comment):
 
     # Find position just before location. Translator comment will be added there.
     translator_comment_pos = main_po.rfind("\n\n#", 0, msg_pos) + 2
-    if translator_comment_pos - 2 == -1:
+    if translator_comment_pos == 1:
         print("translator_comment_pos not found")
         return
 
@@ -144,10 +150,7 @@ def _format_translator_comment(comment, new):
 
 def _is_block_translator_comment(translator_line):
     line = translator_line.strip()
-    if line.find("//") == 0:
-        return False
-    else:
-        return True
+    return line.find("//") != 0
 
 
 def _extract_translator_comment(line, is_block_translator_comment):
@@ -168,13 +171,11 @@ def _extract_translator_comment(line, is_block_translator_comment):
             reached_end = True
         else:
             extracted_comment = line[start:]
+    elif line.find("//") != 0:
+        reached_end = True
     else:
-        # If beginning is not '//', then it's the end.
-        if line.find("//") != 0:
-            reached_end = True
-        else:
-            start = 2 if start == 0 else start
-            extracted_comment = line[start:]
+        start = 2 if start == 0 else start
+        extracted_comment = line[start:]
 
     return (not reached_end, extracted_comment)
 
@@ -262,27 +263,27 @@ def process_file(f, fname):
             _write_translator_comment(msgctx, msg, translator_comment)
             translator_comment = ""
 
-            if msgctx != "":
+            if not msgctx:
+                if msg not in unique_str:
+                    _write_message(msgctx, msg, msg_plural, location)
+                    unique_str.append(msg)
+                    unique_loc[msg] = [location]
+                elif location not in unique_loc[msg]:
+                    _add_additional_location(msgctx, msg, location)
+                    unique_loc[msg].append(location)
+
+            else:
                 # If it's a new context or a new message within an existing context, then write new msgid.
                 # Else add location to existing msgid.
-                if not msgctx in ctx_group:
+                if msgctx not in ctx_group:
                     _write_message(msgctx, msg, msg_plural, location)
                     ctx_group[msgctx] = {msg: [location]}
-                elif not msg in ctx_group[msgctx]:
+                elif msg not in ctx_group[msgctx]:
                     _write_message(msgctx, msg, msg_plural, location)
                     ctx_group[msgctx][msg] = [location]
                 elif not location in ctx_group[msgctx][msg]:
                     _add_additional_location(msgctx, msg, location)
                     ctx_group[msgctx][msg].append(location)
-            else:
-                if not msg in unique_str:
-                    _write_message(msgctx, msg, msg_plural, location)
-                    unique_str.append(msg)
-                    unique_loc[msg] = [location]
-                elif not location in unique_loc[msg]:
-                    _add_additional_location(msgctx, msg, location)
-                    unique_loc[msg].append(location)
-
         l = f.readline()
         lc += 1
 

@@ -14,28 +14,14 @@ def get_name():
 
 
 def can_build():
-    if os.name == "nt":
-        # Building natively on Windows
-        # If VCINSTALLDIR is set in the OS environ, use traditional Godot logic to set up MSVC
-        if os.getenv("VCINSTALLDIR"):  # MSVC, manual setup
-            return True
-
-        # Otherwise, let SCons find MSVC if installed, or else Mingw.
-        # Since we're just returning True here, if there's no compiler
-        # installed, we'll get errors when it tries to build with the
-        # null compiler.
+    if os.name == "nt" and (
+        os.getenv("VCINSTALLDIR") or not os.getenv("VCINSTALLDIR")
+    ):
         return True
 
     if os.name == "posix":
-        # Cross-compiling with MinGW-w64 (old MinGW32 is not supported)
-        mingw32 = "i686-w64-mingw32-"
-        mingw64 = "x86_64-w64-mingw32-"
-
-        if os.getenv("MINGW32_PREFIX"):
-            mingw32 = os.getenv("MINGW32_PREFIX")
-        if os.getenv("MINGW64_PREFIX"):
-            mingw64 = os.getenv("MINGW64_PREFIX")
-
+        mingw32 = os.getenv("MINGW32_PREFIX") or "i686-w64-mingw32-"
+        mingw64 = os.getenv("MINGW64_PREFIX") or "x86_64-w64-mingw32-"
         test = "gcc --version > /dev/null 2>&1"
         if os.system(mingw64 + test) == 0 or os.system(mingw32 + test) == 0:
             return True
@@ -89,7 +75,7 @@ def build_res_file(target, source, env):
     import subprocess
 
     for x in range(len(source)):
-        cmd = cmdbase + "-i " + str(source[x]) + " -o " + str(target[x])
+        cmd = f'{cmdbase}-i ' + str(source[x]) + " -o " + str(target[x])
         try:
             out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
             if len(out[1]):
@@ -118,14 +104,14 @@ def setup_msvc_manual(env):
 
     # find compiler manually
     compiler_version_str = methods.detect_visual_c_compiler_version(env["ENV"])
-    print("Found MSVC compiler: " + compiler_version_str)
+    print(f'Found MSVC compiler: {compiler_version_str}')
 
     # If building for 64bit architecture, disable assembly optimisations for 32 bit builds (theora as of writing)... vc compiler for 64bit can not compile _asm
-    if compiler_version_str == "amd64" or compiler_version_str == "x86_amd64":
+    if compiler_version_str in ["amd64", "x86_amd64"]:
         env["bits"] = "64"
         env["x86_libtheora_opt_vc"] = False
         print("Compiled program architecture will be a 64 bit executable (forcing bits=64).")
-    elif compiler_version_str == "x86" or compiler_version_str == "amd64_x86":
+    elif compiler_version_str in ["x86", "amd64_x86"]:
         print("Compiled program architecture will be a 32 bit executable. (forcing bits=32).")
     else:
         print(
@@ -158,10 +144,7 @@ def setup_msvc_auto(env):
     env.Tool("mssdk")  # we want the MS SDK
     # Note: actual compiler version can be found in env['MSVC_VERSION'], e.g. "14.1" for VS2015
     # Get actual target arch into bits (it may be "default" at this point):
-    if env["TARGET_ARCH"] in ("amd64", "x86_64"):
-        env["bits"] = "64"
-    else:
-        env["bits"] = "32"
+    env["bits"] = "64" if env["TARGET_ARCH"] in ("amd64", "x86_64") else "32"
     print("Found MSVC version %s, arch %s, bits=%s" % (env["MSVC_VERSION"], env["TARGET_ARCH"], env["bits"]))
     if env["TARGET_ARCH"] in ("amd64", "x86_64"):
         env["x86_libtheora_opt_vc"] = False
@@ -294,8 +277,8 @@ def configure_msvc(env, manual_msvc_config):
             env.AppendUnique(LINKFLAGS=["/LTCG"])
 
     if manual_msvc_config:
-        env.Prepend(CPPPATH=[p for p in os.getenv("INCLUDE").split(";")])
-        env.Append(LIBPATH=[p for p in os.getenv("LIB").split(";")])
+        env.Prepend(CPPPATH=list(os.getenv("INCLUDE").split(";")))
+        env.Append(LIBPATH=list(os.getenv("LIB").split(";")))
 
     # Sanitizers
     if env["use_asan"]:
@@ -356,7 +339,7 @@ def configure_mingw(env):
     ## Compiler configuration
 
     if os.name != "nt":
-        env["PROGSUFFIX"] = env["PROGSUFFIX"] + ".exe"  # for linux cross-compilation
+        env["PROGSUFFIX"] = f'{env["PROGSUFFIX"]}.exe'
 
     if env["bits"] == "default":
         if os.name == "nt":
@@ -378,17 +361,17 @@ def configure_mingw(env):
         mingw_prefix = env["mingw_prefix_64"]
 
     if env["use_llvm"]:
-        env["CC"] = mingw_prefix + "clang"
-        env["CXX"] = mingw_prefix + "clang++"
-        env["AS"] = mingw_prefix + "as"
-        env["AR"] = mingw_prefix + "ar"
-        env["RANLIB"] = mingw_prefix + "ranlib"
+        env["CC"] = f'{mingw_prefix}clang'
+        env["CXX"] = f'{mingw_prefix}clang++'
+        env["AS"] = f'{mingw_prefix}as'
+        env["AR"] = f'{mingw_prefix}ar'
+        env["RANLIB"] = f'{mingw_prefix}ranlib'
     else:
-        env["CC"] = mingw_prefix + "gcc"
-        env["CXX"] = mingw_prefix + "g++"
-        env["AS"] = mingw_prefix + "as"
-        env["AR"] = mingw_prefix + "gcc-ar"
-        env["RANLIB"] = mingw_prefix + "gcc-ranlib"
+        env["CC"] = f'{mingw_prefix}gcc'
+        env["CXX"] = f'{mingw_prefix}g++'
+        env["AS"] = f'{mingw_prefix}as'
+        env["AR"] = f'{mingw_prefix}gcc-ar'
+        env["RANLIB"] = f'{mingw_prefix}gcc-ranlib'
 
     env["x86_libtheora_opt_gcc"] = True
 
@@ -396,13 +379,12 @@ def configure_mingw(env):
         if not env["use_llvm"] and env.GetOption("num_jobs") > 1:
             env.Append(CCFLAGS=["-flto"])
             env.Append(LINKFLAGS=["-flto=" + str(env.GetOption("num_jobs"))])
+        elif env["use_thinlto"]:
+            env.Append(CCFLAGS=["-flto=thin"])
+            env.Append(LINKFLAGS=["-flto=thin"])
         else:
-            if env["use_thinlto"]:
-                env.Append(CCFLAGS=["-flto=thin"])
-                env.Append(LINKFLAGS=["-flto=thin"])
-            else:
-                env.Append(CCFLAGS=["-flto"])
-                env.Append(LINKFLAGS=["-flto"])
+            env.Append(CCFLAGS=["-flto"])
+            env.Append(LINKFLAGS=["-flto"])
 
     env.Append(LINKFLAGS=["-Wl,--stack," + str(STACK_SIZE)])
 

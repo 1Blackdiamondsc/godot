@@ -111,9 +111,7 @@ def validate_tag(elem, tag):
 
 def color(color, string):
     if flags["c"] and terminal_supports_color():
-        color_format = ""
-        for code in colors[color]:
-            color_format += "\033[" + str(code) + "m"
+        color_format = "".join("\033[" + str(code) + "m" for code in colors[color])
         return color_format + string + "\033[0m"
     else:
         return string
@@ -215,17 +213,16 @@ class ClassStatus:
         return ok
 
     def is_empty(self):
-        sum = 0
-        for k in self.progresses:
-            if self.progresses[k].is_ok():
-                continue
-            sum += self.progresses[k].total
+        sum = sum(
+            self.progresses[k].total
+            for k in self.progresses
+            if not self.progresses[k].is_ok()
+        )
+
         return sum < 1
 
     def make_output(self):
-        output = {}
-        output["name"] = color("name", self.name)
-
+        output = {'name': color("name", self.name)}
         ok_string = color("part_good", "OK")
         missing_string = color("part_big_problem", "MISSING")
 
@@ -281,13 +278,10 @@ class ClassStatus:
                     status.progresses[tag.tag].increment(len(descr.text.strip()) > 0)
             elif tag.tag in ["constants", "members", "theme_items"]:
                 for sub_tag in list(tag):
-                    if not sub_tag.text is None:
+                    if sub_tag.text is not None:
                         status.progresses[tag.tag].increment(len(sub_tag.text.strip()) > 0)
 
-            elif tag.tag in ["tutorials"]:
-                pass  # Ignore those tags for now
-
-            else:
+            elif tag.tag not in ["tutorials"]:
                 print(tag.tag, tag.attrib)
 
         return status

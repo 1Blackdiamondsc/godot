@@ -202,7 +202,7 @@ if env["builtin_bullet"]:
     thirdparty_sources = [thirdparty_dir + file for file in bullet2_src]
 
     env_bullet.Prepend(CPPPATH=[thirdparty_dir])
-    if env["target"] == "debug" or env["target"] == "release_debug":
+    if env["target"] in ["debug", "release_debug"]:
         env_bullet.Append(CPPDEFINES=["DEBUG"])
 
     env_bullet.Append(CPPDEFINES=["BT_USE_OLD_DAMPING_METHOD", "BT_THREADSAFE"])
